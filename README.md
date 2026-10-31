@@ -3,7 +3,7 @@
 An optimized, full 3D WebGL Snake game designed to be **hosted on a website for multiple players**, featuring a **significantly enlarged 3D arena**, **persistent player name & high-score leaderboard**, and **fluid camera-relative controls**.
 
 ---
-
+🌐 **Live Demo:** [https://snake3d-2w40.onrender.com/](https://snake3d-2w40.onrender.com/)
 ## 🌟 Key Features
 
 ### 1. 🌐 Hosted on Web for Multiple Users

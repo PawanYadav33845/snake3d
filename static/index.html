@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Snake 3D — Cyber Grid Edition</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Three.js from CDN with fallback -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <!-- 3D Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- In-Game HUD -->
+  <div id="hud" class="hidden">
+    <!-- Top Left Stats Card -->
+    <div class="hud-panel hud-top-left">
+      <div class="hud-player-badge">
+        <span class="avatar-icon">🎮</span>
+        <span id="hud-player-name">Player</span>
+      </div>
+      <div class="score-display">
+        <div class="stat-box">
+          <span class="stat-label">SCORE</span>
+          <span id="score-val" class="stat-value neon-cyan">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">HIGH</span>
+          <span id="high-score-val" class="stat-value neon-gold">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">LEVEL</span>
+          <span id="level-val" class="stat-value neon-blue">1</span>
+        </div>
+      </div>
+      <div class="level-progress-container">
+        <div id="level-progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- Top Right 3D Radar Card -->
+    <div class="hud-panel hud-top-right">
+      <div class="cam-indicator">
+        <span class="cam-icon">📹</span>
+        <span id="hud-cam-mode">Cam: Orbit</span>
+        <span class="key-hint">[C]</span>
+      </div>
+      <div id="hud-target-info" class="target-info">
+        Food Δ: [0, 0, 0] (Dist: 0)
+      </div>
+      <div class="arena-tag" id="hud-arena-size">Arena: 32x32x32</div>
+    </div>
+
+    <!-- Level Up Banner -->
+    <div id="level-up-banner" class="banner hidden">
+      ★ LEVEL UP! LEVEL <span id="banner-level-num">2</span> ★
+    </div>
+
+    <!-- Wall Hazard Indicator -->
+    <div id="wall-warning" class="hazard-warning hidden">
+      ⚠️ WALL PROXIMITY HAZARD ⚠️
+    </div>
+
+    <!-- Bottom Controls Cheat Sheet -->
+    <div class="hud-panel hud-bottom-bar">
+      <div class="control-hints">
+        <span><kbd>WASD</kbd> Steer</span>
+        <span><kbd>Space</kbd>/<kbd>Shift</kbd> Up/Down</span>
+        <span><kbd>Mouse Drag</kbd> Orbit</span>
+        <span><kbd>C</kbd> Camera</span>
+        <span><kbd>G</kbd> Guide: <b id="guide-status">ON</b></span>
+        <span><kbd>P</kbd> Pause</span>
+        <span><kbd>R</kbd> Reset Cam</span>
+      </div>
+      <div class="hud-action-buttons">
+        <button id="btn-sound-toggle" class="btn-icon" title="Toggle Sound (M)">🔊</button>
+        <button id="btn-pause-toggle" class="btn-icon" title="Pause Game (P)">⏸️</button>
+      </div>
+    </div>
+
+    <!-- Mobile Touch Controls Overlay (visible on touch/small screens) -->
+    <div id="touch-controls" class="touch-overlay hidden">
+      <div class="dpad-container">
+        <button class="touch-btn" id="tbtn-fwd">W (Fwd)</button>
+        <div class="dpad-horizontal">
+          <button class="touch-btn" id="tbtn-left">A (Left)</button>
+          <button class="touch-btn" id="tbtn-right">D (Right)</button>
+        </div>
+        <button class="touch-btn" id="tbtn-back">S (Back)</button>
+      </div>
+      <div class="vert-controls">
+        <button class="touch-btn touch-btn-alt" id="tbtn-up">▲ UP</button>
+        <button class="touch-btn touch-btn-alt" id="tbtn-down">▼ DOWN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Main Menu -->
+  <div id="menu-modal" class="modal-overlay">
+    <div class="cyber-card menu-card">
+      <div class="logo-container">
+        <h1 class="glitch-title" data-text="SNAKE 3D">SNAKE 3D</h1>
+        <p class="subtitle">CYBER GRID EDITION</p>
+      </div>
+
+      <div class="menu-form">
+        <!-- Player Name -->
+        <div class="input-group">
+          <label for="player-name-input">PILOT CALLSIGN</label>
+          <input type="text" id="player-name-input" maxlength="18" placeholder="Enter your name..." value="CyberSnake">
+        </div>
+
+        <!-- Arena Size Selection -->
+        <div class="selector-group">
+          <label>ARENA SIZE (LARGE 3D GRID)</label>
+          <div class="choice-buttons" id="arena-selector">
+            <button class="choice-btn" data-size="24">Medium (24³)</button>
+            <button class="choice-btn active" data-size="32">Large (32³)</button>
+            <button class="choice-btn" data-size="40">Massive (40³)</button>
+          </div>
+        </div>
+
+        <!-- Difficulty Selection -->
+        <div class="selector-group">
+          <label>SIMULATION SPEED</label>
+          <div class="choice-buttons" id="diff-selector">
+            <button class="choice-btn" data-diff="Casual">Casual</button>
+            <button class="choice-btn active" data-diff="Normal">Normal</button>
+            <button class="choice-btn" data-diff="Fast">Fast</button>
+            <button class="choice-btn" data-diff="Insane">Insane</button>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="menu-actions">
+          <button id="btn-start-game" class="btn-primary">▶ LAUNCH MISSION</button>
+          <button id="btn-open-leaderboard" class="btn-secondary">🏆 LEADERBOARD</button>
+        </div>
+      </div>
+
+      <!-- Controls Guide -->
+      <div class="controls-guide-compact">
+        <span><b>WASD:</b> Move (Camera-Relative)</span>
+        <span><b>Space/Shift:</b> Ascend/Descend</span>
+        <span><b>Mouse:</b> Drag to Orbit, Scroll to Zoom</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Pause -->
+  <div id="pause-modal" class="modal-overlay hidden">
+    <div class="cyber-card compact-card">
+      <h2>MISSION PAUSED</h2>
+      <p class="card-desc">Take a breather, Pilot.</p>
+      <div class="modal-actions">
+        <button id="btn-resume" class="btn-primary">▶ RESUME</button>
+        <button id="btn-pause-menu" class="btn-secondary">MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Game Over -->
+  <div id="gameover-modal" class="modal-overlay hidden">
+    <div class="cyber-card gameover-card">
+      <h2 class="gameover-title">CRITICAL FAILURE</h2>
+      <p class="gameover-subtitle">HULL INTEGRITY COMPROMISED</p>
+
+      <div class="stats-summary-grid">
+        <div class="summary-box">
+          <span class="label">FINAL SCORE</span>
+          <span id="go-score" class="val neon-cyan">0</span>
+        </div>
+        <div class="summary-box">
+          <span class="label">LEVEL REACHED</span>
+          <span id="go-level" class="val neon-blue">1</span>
+        </div>
+        <div class="summary-box">
+          <span class="label">FOOD CONSUMED</span>
+          <span id="go-food" class="val neon-gold">0</span>
+        </div>
+        <div class="summary-box">
+          <span class="label">HIGH SCORE</span>
+          <span id="go-high" class="val neon-emerald">0</span>
+        </div>
+      </div>
+
+      <!-- Save Score to Server Section -->
+      <div class="save-score-section">
+        <div class="save-input-row">
+          <input type="text" id="go-player-name" placeholder="Pilot Name" maxlength="18">
+          <button id="btn-submit-score" class="btn-primary">SAVE SCORE</button>
+        </div>
+        <span id="save-status-msg" class="status-msg"></span>
+      </div>
+
+      <div class="modal-actions">
+        <button id="btn-play-again" class="btn-primary">🔄 PLAY AGAIN</button>
+        <button id="btn-view-leaderboard-go" class="btn-secondary">🏆 LEADERBOARD</button>
+        <button id="btn-go-menu" class="btn-secondary">MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Global Leaderboard -->
+  <div id="leaderboard-modal" class="modal-overlay hidden">
+    <div class="cyber-card leaderboard-card">
+      <div class="leaderboard-header">
+        <h2>🏆 GLOBAL PILOT LEADERBOARD</h2>
+        <button id="btn-close-leaderboard" class="btn-close">✕</button>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="leaderboard-filters">
+        <button class="filter-btn active" data-grid="all">All Arenas</button>
+        <button class="filter-btn" data-grid="24">Medium (24³)</button>
+        <button class="filter-btn" data-grid="32">Large (32³)</button>
+        <button class="filter-btn" data-grid="40">Massive (40³)</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-container">
+        <table id="leaderboard-table">
+          <thead>
+            <tr>
+              <th>RANK</th>
+              <th>PILOT</th>
+              <th>SCORE</th>
+              <th>LEVEL</th>
+              <th>ARENA</th>
+              <th>SPEED</th>
+              <th>DATE</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body">
+            <tr><td colspan="7" class="loading-cell">Loading pilot records...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Synthesizer & Game Logic -->
+  <script src="/static/game.js"></script>
+</body>
+</html>
